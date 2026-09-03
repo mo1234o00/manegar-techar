@@ -37,6 +37,15 @@ const MONTHS = [
   'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
 ]
 
+const COUNTRIES = [
+  { name: 'السعودية', code: '+966' },
+  { name: 'مصر', code: '+20' },
+  { name: 'الأردن', code: '+962' },
+  { name: 'عمان', code: '+968' },
+  { name: 'الكويت', code: '+965' },
+  { name: 'ليبيا', code: '+218' },
+]
+
 const currentYear = new Date().getFullYear()
 
 export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: PaymentsTabProps) {
@@ -45,6 +54,7 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
   const [loading, setLoading] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  const [selectedCountry, setSelectedCountry] = useState('+966') // Default to Saudi Arabia
   
   const groupCreatedDate = createdAt ? new Date(createdAt) : new Date()
   
@@ -185,6 +195,20 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
               </SelectContent>
             </Select>
           </div>
+          <div className="w-40">
+            <Select value={selectedCountry} onValueChange={(value) => value && setSelectedCountry(value)}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <SelectValue placeholder="الدولة" />
+              </SelectTrigger>
+              <SelectContent className="bg-black border-white/10 text-white">
+                {COUNTRIES.map((country) => (
+                  <SelectItem key={country.code} value={country.code}>
+                    {country.name} ({country.code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <Button 
             onClick={handleSave} 
             disabled={!selectedMonth || loading}
@@ -262,7 +286,8 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
                         size="sm"
                         onClick={() => {
                           const message = `السلام عليكم ورحمة الله وبركاته ولي أمر الطالب ${student.name}، دفع شهر ${selectedMonth}: ${netPaid} ج.م، المتبقي: ${remaining > 0 ? remaining : 0} ج.م`
-                          const whatsappUrl = `https://api.whatsapp.com/send?phone=${student.whatsappNumber}&text=${encodeURIComponent(message)}`
+                          const phoneWithCountryCode = `${selectedCountry}${student.whatsappNumber}`
+                          const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountryCode}&text=${encodeURIComponent(message)}`
                           window.location.href = whatsappUrl
                         }}
                         className="text-green-400 hover:bg-green-400/10"
