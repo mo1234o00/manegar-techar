@@ -55,16 +55,23 @@ export function DashboardClient() {
   const fetchDashboardData = async () => {
     try {
       const token = localStorage.getItem('authToken')
+      console.log('Token from localStorage:', token ? 'exists' : 'not found')
+      
       const response = await fetch('/api/dashboard', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       })
+      console.log('Dashboard response status:', response.status)
+      
       if (response.ok) {
         const dashboardData = await response.json()
         setData(dashboardData)
       } else if (response.status === 401) {
+        console.log('Unauthorized, redirecting to login')
         router.push('/login')
+      } else {
+        console.error('Dashboard fetch failed:', response.status)
       }
     } catch (error) {
       console.error('فشل تحميل البيانات:', error)
