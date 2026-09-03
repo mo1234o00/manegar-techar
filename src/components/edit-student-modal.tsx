@@ -16,7 +16,7 @@ interface EditStudentModalProps {
     id: string
     name: string
     parentPhone: string
-    whatsappNumber?: string
+    whatsappNumber: string | null
   }
   open: boolean
   onOpenChange: (open: boolean) => void

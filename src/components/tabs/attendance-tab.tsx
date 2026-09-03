@@ -11,14 +11,14 @@ interface Student {
   id: string
   name: string
   studentCode: string
-  whatsappNumber?: string
+  whatsappNumber: string | null
 }
 
 interface AttendanceTabProps {
   groupId: string
   days: string
   students: Student[]
-  createdAt?: string
+  createdAt?: Date
 }
 
 const STATUS_OPTIONS = ['حاضر', 'غائب', 'معتذر', 'متأخر']

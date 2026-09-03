@@ -11,7 +11,7 @@ interface Student {
   id: string
   name: string
   studentCode: string
-  whatsappNumber?: string
+  whatsappNumber: string | null
 }
 
 interface Payment {
@@ -28,7 +28,7 @@ interface PaymentsTabProps {
   groupId: string
   monthlyPrice: number
   students: Student[]
-  createdAt?: string
+  createdAt?: Date
 }
 
 const MONTHS = [

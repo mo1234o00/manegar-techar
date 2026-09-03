@@ -20,7 +20,7 @@ interface Student {
   name: string
   parentPhone: string
   studentCode: string
-  whatsappNumber?: string
+  whatsappNumber: string | null
 }
 
 interface StudentsTabProps {

@@ -4,7 +4,7 @@ import { verifySession, createUnauthorizedResponse } from '@/lib/auth'
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const token = request.headers.get('authorization')?.replace('Bearer ', '')
@@ -19,9 +19,11 @@ export async function DELETE(
       return createUnauthorizedResponse()
     }
 
+    const { id } = await params
+
     // Delete teacher and all related data
     await prisma.user.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ message: 'تم حذف المدرس بنجاح' })
