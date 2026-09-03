@@ -1,5 +1,5 @@
-import { DashboardClient } from '@/components/dashboard-client'
+import { redirect } from 'next/navigation'
 
-export default function Dashboard() {
-  return <DashboardClient />
+export default function Home() {
+  redirect('/login')
 }
