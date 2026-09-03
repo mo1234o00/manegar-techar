@@ -1,0 +1,123 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  username    String   @unique
+  password    String   // Hashed password
+  displayName String?  // Display name for greeting
+  role        String   @default("teacher") // "admin" or "teacher"
+  academicYears AcademicYear[]
+  sessions    Session[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([username])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model AcademicYear {
+  id        String   @id @default(cuid())
+  userId    String   @default("default-user")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate DateTime
+  endDate   DateTime
+  autoName  String   // e.g., "2024-2025"
+  groups    Group[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([autoName])
+  @@index([userId])
+}
+
+model Group {
+  id           String       @id @default(cuid())
+  yearId       String
+  year         AcademicYear @relation(fields: [yearId], references: [id], onDelete: Cascade)
+  days         String       // e.g., "Saturday,Tuesday" (comma-separated)
+  time         String       // e.g., "16:00"
+  monthlyPrice Float
+  autoName     String       // e.g., "Saturday, Tuesday - 4:00 PM"
+  students     Student[]
+  attendance   Attendance[]
+  payments     Payment[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([yearId])
+  @@index([autoName])
+}
+
+model Student {
+  id           String       @id @default(cuid())
+  groupId      String
+  group        Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  name         String
+  parentPhone  String
+  whatsappNumber String?
+  studentCode  String       @unique // Auto-generated unique ID, e.g., 1001
+  attendance   Attendance[]
+  payments     Payment[]
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([groupId])
+  @@index([studentCode])
+  @@index([name])
+}
+
+model Attendance {
+  id        String   @id @default(cuid())
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  date      DateTime
+  status    String   // Present, Absent, Excused, Late
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, date])
+  @@index([groupId])
+  @@index([date])
+}
+
+model Payment {
+  id             String   @id @default(cuid())
+  studentId      String
+  student        Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  groupId        String
+  group          Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  month          String   // e.g., "January 2025"
+  amountRequired Float
+  amountPaid     Float    @default(0)
+  discount       Float    @default(0)
+  status         String   // Full, Partial, Unpaid
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([studentId, month])
+  @@index([groupId])
+  @@index([month])
+}
