@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -57,6 +57,32 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
   const [selectedCountry, setSelectedCountry] = useState('+966') // Default to Saudi Arabia
   
   const groupCreatedDate = createdAt ? new Date(createdAt) : new Date()
+
+  // Load persisted month on mount
+  useEffect(() => {
+    const savedMonth = localStorage.getItem(`selectedMonth_${groupId}`)
+    if (savedMonth) {
+      setSelectedMonth(savedMonth)
+      // Load existing payments for this month
+      const loadPayments = async () => {
+        try {
+          const token = localStorage.getItem('authToken')
+          const response = await fetch(`/api/payments?groupId=${groupId}&month=${savedMonth}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            setPayments(data)
+          }
+        } catch (error) {
+          console.error('فشل تحميل المدفوعات:', error)
+        }
+      }
+      loadPayments()
+    }
+  }, [groupId])
   
   // Generate available months starting from group creation month
   const getAvailableMonths = () => {
@@ -81,6 +107,7 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
   const handleMonthChange = async (month: string | null) => {
     if (!month) return
     setSelectedMonth(month)
+    localStorage.setItem(`selectedMonth_${groupId}`, month)
     
     // Load existing payments for this month
     try {
@@ -287,7 +314,7 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
               const remaining = monthlyPrice - netPaid
 
               return (
-                <TableRow key={student.id} className="border-white/10">
+                <TableRow key={student.id} className={`border-white/10 ${status === 'Full' ? 'border-green-500/50 bg-green-500/5' : ''}`}>
                   <TableCell className="font-mono">{student.studentCode}</TableCell>
                   <TableCell>{student.name}</TableCell>
                   <TableCell>
@@ -300,7 +327,8 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
                     <Input
                       type="number"
                       step="0.01"
-                      value={amountPaid}
+                      placeholder="0"
+                      value={amountPaid || ''}
                       onChange={(e) => handlePaymentChange(student.id, 'amountPaid', e.target.value)}
                       className="bg-white/5 border-white/10 text-white w-24"
                     />
@@ -309,7 +337,8 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
                     <Input
                       type="number"
                       step="0.01"
-                      value={discount}
+                      placeholder="0"
+                      value={discount || ''}
                       onChange={(e) => handlePaymentChange(student.id, 'discount', e.target.value)}
                       className="bg-white/5 border-white/10 text-white w-24"
                     />
@@ -326,7 +355,7 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
                           const message = `السلام عليكم ورحمة الله وبركاته ولي أمر الطالب ${student.name}، دفع شهر ${selectedMonth}: ${netPaid} ج.م، المتبقي: ${remaining > 0 ? remaining : 0} ج.م`
                           const phoneWithCountryCode = `${selectedCountry}${student.whatsappNumber}`
                           const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountryCode}&text=${encodeURIComponent(message)}`
-                          window.location.href = whatsappUrl
+                          window.open(whatsappUrl, '_blank')
                         }}
                         className="text-green-400 hover:bg-green-400/10"
                       >

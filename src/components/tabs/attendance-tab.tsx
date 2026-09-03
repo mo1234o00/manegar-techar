@@ -71,9 +71,47 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
   })
   const groupCreatedDate = createdAt ? new Date(createdAt) : new Date()
 
+  // Load persisted date on mount
+  useEffect(() => {
+    const savedDate = localStorage.getItem(`selectedDate_${groupId}`)
+    if (savedDate) {
+      setSelectedDate(savedDate)
+      // Load existing attendance for this date
+      const loadAttendance = async () => {
+        try {
+          const token = localStorage.getItem('authToken')
+          const response = await fetch(`/api/attendance?groupId=${groupId}&date=${savedDate}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          })
+          if (response.ok) {
+            const data = await response.json()
+            const attendanceMap: Record<string, string> = {}
+            data.forEach((record: any) => {
+              // Convert English status to Arabic for display
+              const statusMap: Record<string, string> = {
+                'Present': 'حاضر',
+                'Absent': 'غائب',
+                'Excused': 'معتذر',
+                'Late': 'متأخر'
+              }
+              attendanceMap[record.studentId] = statusMap[record.status] || record.status
+            })
+            setAttendance(attendanceMap)
+          }
+        } catch (error) {
+          console.error('فشل تحميل الحضور:', error)
+        }
+      }
+      loadAttendance()
+    }
+  }, [groupId])
+
   const handleDateChange = async (date: string | null) => {
     if (!date) return
     setSelectedDate(date)
+    localStorage.setItem(`selectedDate_${groupId}`, date)
     
     // Load existing attendance for this date
     try {
@@ -283,7 +321,7 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
           </TableHeader>
           <TableBody>
             {students.map((student) => (
-              <TableRow key={student.id} className="border-white/10">
+              <TableRow key={student.id} className={`border-white/10 ${attendance[student.id] === 'حاضر' ? 'border-green-500/50 bg-green-500/5' : ''}`}>
                 <TableCell className="font-mono">{student.studentCode}</TableCell>
                 <TableCell>{student.name}</TableCell>
                 <TableCell>
@@ -312,7 +350,7 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
                         const message = `السلام عليكم ورحمة الله وبركاته ولي أمر الطالب ${student.name}، حضور يوم ${selectedDate}: ${attendance[student.id]}`
                         const phoneWithCountryCode = `${selectedCountry}${student.whatsappNumber}`
                         const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountryCode}&text=${encodeURIComponent(message)}`
-                        window.location.href = whatsappUrl
+                        window.open(whatsappUrl, '_blank')
                       }}
                       className="text-green-400 hover:bg-green-400/10"
                     >
