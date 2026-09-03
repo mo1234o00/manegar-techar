@@ -254,13 +254,13 @@ export function DashboardClient() {
         <Card className="bg-white/5 border-white/10">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>السنوات الأكاديمية</CardTitle>
-            <CreateAcademicYearModal />
+            <CreateAcademicYearModal onSuccess={fetchDashboardData} />
           </CardHeader>
           <CardContent>
             {data.years.length === 0 ? (
               <div className="text-center py-8">
                 <p className="text-white/40 mb-4">مفيش سنوات أكاديمية</p>
-                <CreateAcademicYearModal />
+                <CreateAcademicYearModal onSuccess={fetchDashboardData} />
               </div>
             ) : (
               <div className="space-y-4">
@@ -294,7 +294,7 @@ export function DashboardClient() {
                           </Button>
                         </div>
                       </div>
-                      <CreateGroupModal yearId={year.id} />
+                      <CreateGroupModal yearId={year.id} onSuccess={fetchDashboardData} />
                     </div>
                     {year.groups.length === 0 ? (
                       <div className="text-center py-6 border border-dashed border-white/10 rounded-lg">

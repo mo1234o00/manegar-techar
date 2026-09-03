@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation'
 
 interface CreateGroupModalProps {
   yearId: string
+  onSuccess?: () => void
 }
 
 const DAYS = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة']
@@ -37,7 +38,7 @@ const groupSchema = z.object({
 
 type GroupFormValues = z.infer<typeof groupSchema>
 
-export function CreateGroupModal({ yearId }: CreateGroupModalProps) {
+export function CreateGroupModal({ yearId, onSuccess }: CreateGroupModalProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -81,7 +82,9 @@ export function CreateGroupModal({ yearId }: CreateGroupModalProps) {
       if (response.ok) {
         setOpen(false)
         form.reset()
-        router.refresh()
+        if (onSuccess) {
+          onSuccess()
+        }
       }
     } catch (error) {
       console.error('فشل إنشاء المجموعة:', error)

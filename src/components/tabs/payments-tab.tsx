@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DollarSign, Calendar, MessageCircle } from 'lucide-react'
+import { Toast } from '@/components/toast'
 
 interface Student {
   id: string
@@ -42,6 +43,8 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
   const [selectedMonth, setSelectedMonth] = useState('')
   const [payments, setPayments] = useState<Payment[]>([])
   const [loading, setLoading] = useState(false)
+  const [toastOpen, setToastOpen] = useState(false)
+  const [toastMessage, setToastMessage] = useState('')
   
   const groupCreatedDate = createdAt ? new Date(createdAt) : new Date()
   
@@ -109,14 +112,28 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
   }
 
   const handleSave = async () => {
-    if (!selectedMonth) return
+    if (!selectedMonth) {
+      setToastMessage('الرجاء اختيار شهر أولاً')
+      setToastOpen(true)
+      return
+    }
+
+    if (payments.length === 0) {
+      setToastMessage('الرجاء تحديد طالب على الأقل قبل الحفظ')
+      setToastOpen(true)
+      return
+    }
 
     setLoading(true)
     try {
+      const token = localStorage.getItem('authToken')
       const promises = payments.map(payment =>
         fetch('/api/payments', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
           body: JSON.stringify({
             studentId: payment.studentId,
             groupId,
@@ -129,10 +146,12 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
       )
 
       await Promise.all(promises)
-      alert('تم حفظ المدفوعات بنجاح!')
+      setToastMessage('تم حفظ المدفوعات بنجاح!')
+      setToastOpen(true)
     } catch (error) {
       console.error('فشل حفظ المدفوعات:', error)
-      alert('فشل حفظ المدفوعات')
+      setToastMessage('فشل حفظ المدفوعات')
+      setToastOpen(true)
     } finally {
       setLoading(false)
     }
@@ -148,31 +167,32 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-4">
-        <div className="flex-1">
-          <Select value={selectedMonth} onValueChange={handleMonthChange}>
-            <SelectTrigger className="bg-white/5 border-white/10 text-white">
-              <Calendar className="h-4 w-4 mr-2 text-white/40" />
-              <SelectValue placeholder="اختر الشهر" />
-            </SelectTrigger>
-            <SelectContent className="bg-black border-white/10 text-white">
-              {getAvailableMonths().map((month) => (
-                <SelectItem key={month} value={month}>
-                  {month}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    <>
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <Select value={selectedMonth} onValueChange={handleMonthChange}>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                <Calendar className="h-4 w-4 mr-2 text-white/40" />
+                <SelectValue placeholder="اختر الشهر" />
+              </SelectTrigger>
+              <SelectContent className="bg-black border-white/10 text-white">
+                {getAvailableMonths().map((month) => (
+                  <SelectItem key={month} value={month}>
+                    {month}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button 
+            onClick={handleSave} 
+            disabled={!selectedMonth || loading}
+            className="bg-white text-black hover:bg-white/90"
+          >
+            {loading ? 'جاري الحفظ...' : 'حفظ المدفوعات'}
+          </Button>
         </div>
-        <Button 
-          onClick={handleSave} 
-          disabled={!selectedMonth || loading}
-          className="bg-white text-black hover:bg-white/90"
-        >
-          {loading ? 'جاري الحفظ...' : 'حفظ المدفوعات'}
-        </Button>
-      </div>
 
       {!selectedMonth ? (
         <div className="text-center py-8 border border-white/10 rounded-lg">
@@ -258,5 +278,8 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
         </Table>
       )}
     </div>
+    
+    <Toast open={toastOpen} onOpenChange={setToastOpen} message={toastMessage} />
+    </>
   )
 }

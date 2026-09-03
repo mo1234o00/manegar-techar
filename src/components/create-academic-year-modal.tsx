@@ -19,7 +19,7 @@ const academicYearSchema = z.object({
 
 type AcademicYearFormValues = z.infer<typeof academicYearSchema>
 
-export function CreateAcademicYearModal() {
+export function CreateAcademicYearModal({ onSuccess }: { onSuccess?: () => void }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -49,7 +49,9 @@ export function CreateAcademicYearModal() {
       if (response.ok) {
         setOpen(false)
         form.reset()
-        router.refresh()
+        if (onSuccess) {
+          onSuccess()
+        }
       }
     } catch (error) {
       console.error('فشل إنشاء السنة الأكاديمية:', error)

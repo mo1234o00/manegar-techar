@@ -59,7 +59,12 @@ export function StudentsTab({ groupId, monthlyPrice }: StudentsTabProps) {
   const fetchStudents = async () => {
     setDataLoading(true)
     try {
-      const response = await fetch(`/api/students?groupId=${groupId}`)
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/students?groupId=${groupId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setStudents(data || [])
@@ -82,17 +87,22 @@ export function StudentsTab({ groupId, monthlyPrice }: StudentsTabProps) {
     setLoading(true)
 
     try {
+      const token = localStorage.getItem('authToken')
       const dataToSend = {
         groupId,
         name: values.name,
         parentPhone: values.parentPhone,
+        whatsappNumber: values.whatsappNumber || null,
       }
       
       console.log('Sending data:', dataToSend)
 
       const response = await fetch('/api/students', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify(dataToSend),
       })
 
