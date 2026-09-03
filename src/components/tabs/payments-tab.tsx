@@ -84,7 +84,12 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
     
     // Load existing payments for this month
     try {
-      const response = await fetch(`/api/payments?groupId=${groupId}&month=${month}`)
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/payments?groupId=${groupId}&month=${month}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         setPayments(data)
@@ -94,21 +99,26 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
     }
   }
 
-  const handlePaymentChange = (studentId: string, field: 'amountPaid' | 'discount', value: string) => {
+  const handlePaymentChange = async (studentId: string, field: 'amountPaid' | 'discount', value: string) => {
     const numValue = parseFloat(value) || 0
+    
+    // Update local state immediately
     setPayments(prev => {
       const existing = prev.find(p => p.studentId === studentId)
       if (existing) {
-        return prev.map(p => 
+        const updated = prev.map(p => 
           p.studentId === studentId 
             ? { ...p, [field]: numValue }
             : p
         )
+        // Save to database immediately
+        savePayment(studentId, updated.find(p => p.studentId === studentId)!)
+        return updated
       } else {
         const netPaid = field === 'amountPaid' ? numValue : 0
         const discount = field === 'discount' ? numValue : 0
-        const status = netPaid + discount >= monthlyPrice ? 'Full' : netPaid + discount > 0 ? 'Partial' : 'Unpaid'
-        return [...prev, {
+        const status: 'Full' | 'Partial' | 'Unpaid' = netPaid + discount >= monthlyPrice ? 'Full' : netPaid + discount > 0 ? 'Partial' : 'Unpaid'
+        const newPayment: Payment = {
           id: '',
           studentId,
           month: selectedMonth,
@@ -116,9 +126,37 @@ export function PaymentsTab({ groupId, monthlyPrice, students, createdAt }: Paym
           amountPaid: netPaid,
           discount,
           status,
-        }]
+        }
+        // Save to database immediately
+        savePayment(studentId, newPayment)
+        return [...prev, newPayment]
       }
     })
+  }
+
+  const savePayment = async (studentId: string, payment: Payment) => {
+    if (!selectedMonth) return
+    
+    try {
+      const token = localStorage.getItem('authToken')
+      await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          studentId,
+          groupId,
+          month: payment.month,
+          amountRequired: payment.amountRequired,
+          amountPaid: payment.amountPaid,
+          discount: payment.discount,
+        }),
+      })
+    } catch (error) {
+      console.error('فشل حفظ الدفعة:', error)
+    }
   }
 
   const handleSave = async () => {

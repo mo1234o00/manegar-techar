@@ -77,7 +77,12 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
     
     // Load existing attendance for this date
     try {
-      const response = await fetch(`/api/attendance?groupId=${groupId}&date=${date}`)
+      const token = localStorage.getItem('authToken')
+      const response = await fetch(`/api/attendance?groupId=${groupId}&date=${date}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
       if (response.ok) {
         const data = await response.json()
         const attendanceMap: Record<string, string> = {}
@@ -98,9 +103,39 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
     }
   }
 
-  const handleStatusChange = (studentId: string, status: string | null) => {
-    if (!status) return
+  const handleStatusChange = async (studentId: string, status: string | null) => {
+    if (!status || !selectedDate) return
+    
+    // Update local state immediately
     setAttendance(prev => ({ ...prev, [studentId]: status }))
+    
+    // Convert Arabic status back to English for API
+    const statusMap: Record<string, string> = {
+      'حاضر': 'Present',
+      'غائب': 'Absent',
+      'معتذر': 'Excused',
+      'متأخر': 'Late'
+    }
+    
+    // Save to database immediately
+    try {
+      const token = localStorage.getItem('authToken')
+      await fetch('/api/attendance', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          studentId,
+          groupId,
+          date: selectedDate,
+          status: statusMap[status] || status,
+        }),
+      })
+    } catch (error) {
+      console.error('فشل حفظ الحضور:', error)
+    }
   }
 
   const handleSave = async () => {

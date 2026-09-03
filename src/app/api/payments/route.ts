@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { verifySession, createUnauthorizedResponse } from '@/lib/auth'
 
 const createPaymentSchema = z.object({
   studentId: z.string(),
@@ -13,8 +14,30 @@ const createPaymentSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    if (!token) {
+      return createUnauthorizedResponse()
+    }
+
+    const user = await verifySession(token)
+    
+    if (!user) {
+      return createUnauthorizedResponse()
+    }
+
     const body = await request.json()
     const { studentId, groupId, month, amountRequired, amountPaid, discount } = createPaymentSchema.parse(body)
+
+    // Verify that the group belongs to the user
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: { year: true }
+    })
+
+    if (!group || (group.year as any).userId !== user.id) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+    }
 
     const netPaid = amountPaid + discount
     let status: 'Full' | 'Partial' | 'Unpaid'
@@ -71,23 +94,49 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const groupId = searchParams.get('groupId')
-  const month = searchParams.get('month')
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    if (!token) {
+      return createUnauthorizedResponse()
+    }
 
-  if (!groupId || !month) {
-    return NextResponse.json({ error: 'Group ID and month are required' }, { status: 400 })
+    const user = await verifySession(token)
+    
+    if (!user) {
+      return createUnauthorizedResponse()
+    }
+
+    const { searchParams } = new URL(request.url)
+    const groupId = searchParams.get('groupId')
+    const month = searchParams.get('month')
+
+    if (!groupId || !month) {
+      return NextResponse.json({ error: 'Group ID and month are required' }, { status: 400 })
+    }
+
+    // Verify that the group belongs to the user
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: { year: true }
+    })
+
+    if (!group || (group.year as any).userId !== user.id) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+    }
+
+    const payments = await prisma.payment.findMany({
+      where: {
+        groupId,
+        month,
+      },
+      include: {
+        student: true,
+      },
+    })
+
+    return NextResponse.json(payments)
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 })
   }
-
-  const payments = await prisma.payment.findMany({
-    where: {
-      groupId,
-      month,
-    },
-    include: {
-      student: true,
-    },
-  })
-
-  return NextResponse.json(payments)
 }

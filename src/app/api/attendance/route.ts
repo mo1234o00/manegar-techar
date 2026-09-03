@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
+import { verifySession, createUnauthorizedResponse } from '@/lib/auth'
 
 const createAttendanceSchema = z.object({
   studentId: z.string(),
@@ -11,8 +12,30 @@ const createAttendanceSchema = z.object({
 
 export async function POST(request: Request) {
   try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    if (!token) {
+      return createUnauthorizedResponse()
+    }
+
+    const user = await verifySession(token)
+    
+    if (!user) {
+      return createUnauthorizedResponse()
+    }
+
     const body = await request.json()
     const { studentId, groupId, date, status } = createAttendanceSchema.parse(body)
+
+    // Verify that the group belongs to the user
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: { year: true }
+    })
+
+    if (!group || (group.year as any).userId !== user.id) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+    }
 
     const attendanceDate = new Date(date)
 
@@ -53,25 +76,51 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const groupId = searchParams.get('groupId')
-  const date = searchParams.get('date')
+  try {
+    const token = request.headers.get('authorization')?.replace('Bearer ', '')
+    
+    if (!token) {
+      return createUnauthorizedResponse()
+    }
 
-  if (!groupId || !date) {
-    return NextResponse.json({ error: 'Group ID and date are required' }, { status: 400 })
+    const user = await verifySession(token)
+    
+    if (!user) {
+      return createUnauthorizedResponse()
+    }
+
+    const { searchParams } = new URL(request.url)
+    const groupId = searchParams.get('groupId')
+    const date = searchParams.get('date')
+
+    if (!groupId || !date) {
+      return NextResponse.json({ error: 'Group ID and date are required' }, { status: 400 })
+    }
+
+    // Verify that the group belongs to the user
+    const group = await prisma.group.findUnique({
+      where: { id: groupId },
+      include: { year: true }
+    })
+
+    if (!group || (group.year as any).userId !== user.id) {
+      return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
+    }
+
+    const attendanceDate = new Date(date)
+
+    const attendance = await prisma.attendance.findMany({
+      where: {
+        groupId,
+        date: attendanceDate,
+      },
+      include: {
+        student: true,
+      },
+    })
+
+    return NextResponse.json(attendance)
+  } catch (error) {
+    return NextResponse.json({ error: 'Failed to fetch attendance' }, { status: 500 })
   }
-
-  const attendanceDate = new Date(date)
-
-  const attendance = await prisma.attendance.findMany({
-    where: {
-      groupId,
-      date: attendanceDate,
-    },
-    include: {
-      student: true,
-    },
-  })
-
-  return NextResponse.json(attendance)
 }
