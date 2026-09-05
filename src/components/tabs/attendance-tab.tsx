@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Calendar, MessageCircle } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Calendar, MessageCircle, Send } from 'lucide-react'
 import { Toast } from '@/components/toast'
 
 interface Student {
@@ -56,6 +57,9 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
   const [loading, setLoading] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
+  const [weeklySummaryOpen, setWeeklySummaryOpen] = useState(false)
+  const [weeklySummary, setWeeklySummary] = useState<any[]>([])
+  const [summaryLoading, setSummaryLoading] = useState(false)
 
   // Convert Arabic days to English if needed
   const groupDays = days.split(',').map(day => {
@@ -215,6 +219,72 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
     }
   }
 
+  const getWeekRange = () => {
+    const today = new Date()
+    const dayOfWeek = today.getDay()
+    const startOfWeek = new Date(today)
+    startOfWeek.setDate(today.getDate() - dayOfWeek)
+    startOfWeek.setHours(0, 0, 0, 0)
+    
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6)
+    endOfWeek.setHours(23, 59, 59, 999)
+    
+    return {
+      start: startOfWeek.toISOString().split('T')[0],
+      end: endOfWeek.toISOString().split('T')[0]
+    }
+  }
+
+  const handleWeeklySummary = async () => {
+    setSummaryLoading(true)
+    try {
+      const token = localStorage.getItem('authToken')
+      const { start, end } = getWeekRange()
+      
+      const response = await fetch(`/api/weekly-summary?groupId=${groupId}&weekStart=${start}&weekEnd=${end}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      })
+      
+      if (response.ok) {
+        const data = await response.json()
+        setWeeklySummary(data)
+        setWeeklySummaryOpen(true)
+      } else {
+        setToastMessage('فشل جلب ملخص الأسبوع')
+        setToastOpen(true)
+      }
+    } catch (error) {
+      console.error('فشل جلب ملخص الأسبوع:', error)
+      setToastMessage('فشل جلب ملخص الأسبوع')
+      setToastOpen(true)
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
+
+  const sendWeeklyMessage = (summary: any) => {
+    let message = `السلام عليكم ورحمة الله وبركاته ولي أمر الطالب ${summary.studentName}\n`
+    message += `ملخص الأسبوع:\n`
+    message += `- عدد الحضور: ${summary.presentCount}\n`
+    message += `- عدد الغياب: ${summary.absentCount}\n`
+    if (summary.excusedCount > 0) {
+      message += `- عدد العذر: ${summary.excusedCount}\n`
+    }
+    if (summary.lateCount > 0) {
+      message += `- عدد التأخير: ${summary.lateCount}\n`
+    }
+    if (summary.examCount > 0) {
+      message += `- متوسط درجات الامتحانات: ${summary.averageExamScore}/10\n`
+    }
+    
+    const phoneWithCountryCode = `${summary.countryCode || '+966'}${summary.whatsappNumber}`
+    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountryCode}&text=${encodeURIComponent(message)}`
+    window.open(whatsappUrl, '_blank')
+  }
+
   const handleSave = async () => {
     if (!selectedDate) return
 
@@ -317,6 +387,13 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
             </SelectContent>
           </Select>
         </div>
+        <Button 
+          onClick={handleWeeklySummary} 
+          disabled={summaryLoading}
+          className="bg-green-500 text-white hover:bg-green-600"
+        >
+          {summaryLoading ? 'جاري التحميل...' : 'ملخص الأسبوع'}
+        </Button>
         <Button 
           onClick={handleSave} 
           disabled={!selectedDate || loading}
@@ -453,6 +530,59 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
           </TableBody>
         </Table>
       )}
+
+      <Dialog open={weeklySummaryOpen} onOpenChange={setWeeklySummaryOpen}>
+        <DialogContent className="bg-black border-white/10 text-white max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>ملخص الأسبوع</DialogTitle>
+          </DialogHeader>
+          <Table>
+            <TableHeader>
+              <TableRow className="border-white/10">
+                <TableHead className="text-white/60">الكود</TableHead>
+                <TableHead className="text-white/60">الاسم</TableHead>
+                <TableHead className="text-white/60">حضور</TableHead>
+                <TableHead className="text-white/60">غياب</TableHead>
+                <TableHead className="text-white/60">عذر</TableHead>
+                <TableHead className="text-white/60">تأخير</TableHead>
+                <TableHead className="text-white/60">متوسط الامتحانات</TableHead>
+                <TableHead className="text-white/60">إرسال</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {weeklySummary.map((summary) => (
+                <TableRow key={summary.studentId} className="border-white/10">
+                  <TableCell className="font-mono">{summary.studentCode}</TableCell>
+                  <TableCell>{summary.studentName}</TableCell>
+                  <TableCell className="text-green-400">{summary.presentCount}</TableCell>
+                  <TableCell className="text-red-400">{summary.absentCount}</TableCell>
+                  <TableCell className="text-yellow-400">{summary.excusedCount}</TableCell>
+                  <TableCell className="text-orange-400">{summary.lateCount}</TableCell>
+                  <TableCell>
+                    {summary.examCount > 0 ? (
+                      <span className="text-blue-400">{summary.averageExamScore}/10</span>
+                    ) : (
+                      <span className="text-white/40">-</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {summary.whatsappNumber ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => sendWeeklyMessage(summary)}
+                        className="text-green-400 hover:bg-green-400/10"
+                      >
+                        <Send className="h-4 w-4" />
+                      </Button>
+                    ) : null}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </DialogContent>
+      </Dialog>
 
       <Toast
         open={toastOpen}
