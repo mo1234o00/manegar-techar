@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus } from 'lucide-react'
 
-const STAGES = ['ابتدائي', 'إعدادي', 'ثانوي']
+const STAGES = ['ابتدائي', 'إعدادي', 'ثانوي'] // Updated
 const TERMS = ['ترم أول', 'ترم ثاني']
 const EDUCATION_SYSTEMS = ['النظام القديم', 'نظام البكالوريا الجديد']
 const GRADES_NEW_SYSTEM = ['المرحلة التمهيدية العامة', 'الصف الثاني الثانوي', 'الصف الثالث الثانوي']
