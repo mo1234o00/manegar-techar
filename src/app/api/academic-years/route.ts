@@ -6,6 +6,11 @@ import { verifySession, createUnauthorizedResponse } from '@/lib/auth'
 const createAcademicYearSchema = z.object({
   startDate: z.string(),
   endDate: z.string(),
+  stage: z.string(),
+  term: z.string().optional(),
+  educationSystem: z.string().optional(),
+  grade: z.string().optional(),
+  specialization: z.string().optional(),
 })
 
 export async function POST(request: Request) {
@@ -23,7 +28,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { startDate, endDate } = createAcademicYearSchema.parse(body)
+    const { startDate, endDate, stage, term, educationSystem, grade, specialization } = createAcademicYearSchema.parse(body)
 
     const start = new Date(startDate)
     const end = new Date(endDate)
@@ -38,7 +43,12 @@ export async function POST(request: Request) {
         startDate: start,
         endDate: end,
         autoName,
-        userId: user.id
+        userId: user.id,
+        stage,
+        term,
+        educationSystem,
+        grade,
+        specialization,
       },
     })
 
@@ -66,7 +76,7 @@ export async function GET(request: Request) {
     }
 
     const years = await prisma.academicYear.findMany({
-      where: { userId: user.id },
+      where: { userId: user.id } as any,
       orderBy: {
         startDate: 'desc',
       },

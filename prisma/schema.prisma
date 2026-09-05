@@ -37,15 +37,20 @@ model Session {
 }
 
 model AcademicYear {
-  id        String   @id @default(cuid())
-  userId    String   @default("default-user")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  startDate DateTime
-  endDate   DateTime
-  autoName  String   // e.g., "2024-2025"
-  groups    Group[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String   @default("default-user")
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startDate       DateTime
+  endDate         DateTime
+  autoName        String   // e.g., "2024-2025"
+  stage           String   // المرحلة: ابتدائي, إعدادي, ثانوي
+  term            String?  // الفصل: ترم أول, ترم ثاني
+  educationSystem String?  // نظام الدراسة للثانوي: القديم, البكالوريا الجديد
+  grade           String?  // الصف الدراسي
+  specialization  String?  // التخصص/التشعيب
+  groups          Group[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([autoName])
   @@index([userId])
