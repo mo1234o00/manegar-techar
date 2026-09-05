@@ -12,6 +12,7 @@ interface Student {
   name: string
   studentCode: string
   whatsappNumber: string | null
+  countryCode: string | null
 }
 
 interface AttendanceTabProps {
@@ -23,14 +24,7 @@ interface AttendanceTabProps {
 
 const STATUS_OPTIONS = ['حاضر', 'غائب', 'معتذر', 'متأخر']
 
-const COUNTRIES = [
-  { name: 'السعودية', code: '+966' },
-  { name: 'مصر', code: '+20' },
-  { name: 'الأردن', code: '+962' },
-  { name: 'عمان', code: '+968' },
-  { name: 'الكويت', code: '+965' },
-  { name: 'ليبيا', code: '+218' },
-]
+const LEVEL_OPTIONS = ['ضعيف', 'مقبول', 'متوسط', 'جيد', 'جيد جداً', 'ممتاز']
 
 const DAY_NAMES_AR = {
   'Sunday': 'الأحد',
@@ -55,10 +49,13 @@ const DAY_NAMES_EN = {
 export function AttendanceTab({ groupId, days, students, createdAt }: AttendanceTabProps) {
   const [selectedDate, setSelectedDate] = useState('')
   const [attendance, setAttendance] = useState<Record<string, string>>({})
+  const [homework, setHomework] = useState<Record<string, boolean>>({})
+  const [notes, setNotes] = useState<Record<string, string>>({})
+  const [examScores, setExamScores] = useState<Record<string, number>>({})
+  const [levels, setLevels] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(false)
   const [toastOpen, setToastOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState('')
-  const [selectedCountry, setSelectedCountry] = useState('+966') // Default to Saudi Arabia
 
   // Convert Arabic days to English if needed
   const groupDays = days.split(',').map(day => {
@@ -124,6 +121,10 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
       if (response.ok) {
         const data = await response.json()
         const attendanceMap: Record<string, string> = {}
+        const homeworkMap: Record<string, boolean> = {}
+        const notesMap: Record<string, string> = {}
+        const examScoresMap: Record<string, number> = {}
+        const levelsMap: Record<string, string> = {}
         data.forEach((record: any) => {
           // Convert English status to Arabic for display
           const statusMap: Record<string, string> = {
@@ -133,8 +134,16 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
             'Late': 'متأخر'
           }
           attendanceMap[record.studentId] = statusMap[record.status] || record.status
+          homeworkMap[record.studentId] = record.homework || false
+          notesMap[record.studentId] = record.notes || ''
+          examScoresMap[record.studentId] = record.examScore || 0
+          levelsMap[record.studentId] = record.level || 'مقبول'
         })
         setAttendance(attendanceMap)
+        setHomework(homeworkMap)
+        setNotes(notesMap)
+        setExamScores(examScoresMap)
+        setLevels(levelsMap)
       }
     } catch (error) {
       console.error('فشل تحميل الحضور:', error)
@@ -147,6 +156,33 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
     // Update local state immediately
     setAttendance(prev => ({ ...prev, [studentId]: status }))
     
+    // Save to database immediately
+    saveAttendance(studentId)
+  }
+
+  const handleHomeworkChange = (studentId: string, value: boolean) => {
+    setHomework(prev => ({ ...prev, [studentId]: value }))
+    saveAttendance(studentId)
+  }
+
+  const handleNotesChange = (studentId: string, value: string) => {
+    setNotes(prev => ({ ...prev, [studentId]: value }))
+    saveAttendance(studentId)
+  }
+
+  const handleExamScoreChange = (studentId: string, value: string) => {
+    setExamScores(prev => ({ ...prev, [studentId]: parseFloat(value) || 0 }))
+    saveAttendance(studentId)
+  }
+
+  const handleLevelChange = (studentId: string, value: string) => {
+    setLevels(prev => ({ ...prev, [studentId]: value }))
+    saveAttendance(studentId)
+  }
+
+  const saveAttendance = async (studentId: string) => {
+    if (!selectedDate) return
+    
     // Convert Arabic status back to English for API
     const statusMap: Record<string, string> = {
       'حاضر': 'Present',
@@ -155,7 +191,6 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
       'متأخر': 'Late'
     }
     
-    // Save to database immediately
     try {
       const token = localStorage.getItem('authToken')
       await fetch('/api/attendance', {
@@ -168,7 +203,11 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
           studentId,
           groupId,
           date: selectedDate,
-          status: statusMap[status] || status,
+          status: statusMap[attendance[studentId]] || attendance[studentId],
+          homework: homework[studentId] || false,
+          notes: notes[studentId] || '',
+          examScore: examScores[studentId] || 0,
+          level: levels[studentId] || 'مقبول',
         }),
       })
     } catch (error) {
@@ -278,20 +317,6 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
             </SelectContent>
           </Select>
         </div>
-        <div className="w-40">
-          <Select value={selectedCountry} onValueChange={(value) => value && setSelectedCountry(value)}>
-            <SelectTrigger className="bg-white/5 border-white/10 text-white">
-              <SelectValue placeholder="الدولة" />
-            </SelectTrigger>
-            <SelectContent className="bg-black border-white/10 text-white">
-              {COUNTRIES.map((country) => (
-                <SelectItem key={country.code} value={country.code}>
-                  {country.name} ({country.code})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
         <Button 
           onClick={handleSave} 
           disabled={!selectedDate || loading}
@@ -316,6 +341,10 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
               <TableHead className="text-white/60">الكود</TableHead>
               <TableHead className="text-white/60">الاسم</TableHead>
               <TableHead className="text-white/60">الحالة</TableHead>
+              <TableHead className="text-white/60">الواجب</TableHead>
+              <TableHead className="text-white/60">المستوى</TableHead>
+              <TableHead className="text-white/60">درجة الامتحان</TableHead>
+              <TableHead className="text-white/60">ملاحظات</TableHead>
               <TableHead className="text-white/60">إرسال</TableHead>
             </TableRow>
           </TableHeader>
@@ -342,13 +371,74 @@ export function AttendanceTab({ groupId, days, students, createdAt }: Attendance
                   </Select>
                 </TableCell>
                 <TableCell>
+                  <input
+                    type="checkbox"
+                    checked={homework[student.id] || false}
+                    onChange={(e) => handleHomeworkChange(student.id, e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                </TableCell>
+                <TableCell>
+                  <Select
+                    value={levels[student.id] || 'مقبول'}
+                    onValueChange={(value) => value && handleLevelChange(student.id, value)}
+                  >
+                    <SelectTrigger className="bg-white/5 border-white/10 text-white w-32">
+                      <SelectValue placeholder="المستوى" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-black border-white/10 text-white">
+                      {LEVEL_OPTIONS.map((level) => (
+                        <SelectItem key={level} value={level}>
+                          {level}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </TableCell>
+                <TableCell>
+                  <input
+                    type="number"
+                    step="0.5"
+                    placeholder="0"
+                    value={examScores[student.id] || ''}
+                    onChange={(e) => handleExamScoreChange(student.id, e.target.value)}
+                    className="bg-white/5 border-white/10 text-white w-20 px-2 py-1 rounded"
+                  />
+                </TableCell>
+                <TableCell>
+                  <input
+                    type="text"
+                    placeholder="ملاحظات"
+                    value={notes[student.id] || ''}
+                    onChange={(e) => handleNotesChange(student.id, e.target.value)}
+                    className="bg-white/5 border-white/10 text-white w-32 px-2 py-1 rounded"
+                  />
+                </TableCell>
+                <TableCell>
                   {student.whatsappNumber && attendance[student.id] ? (
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const message = `السلام عليكم ورحمة الله وبركاته ولي أمر الطالب ${student.name}، حضور يوم ${selectedDate}: ${attendance[student.id]}`
-                        const phoneWithCountryCode = `${selectedCountry}${student.whatsappNumber}`
+                        let message = `السلام عليكم ورحمة الله وبركاته ولي أمر الطالب ${student.name}، حضور يوم ${selectedDate}: ${attendance[student.id]}`
+                        
+                        if (homework[student.id]) {
+                          message += `، الواجب: تم`
+                        } else {
+                          message += `، الواجب: لم يتم`
+                        }
+                        
+                        if (notes[student.id]) {
+                          message += `، ملاحظات: ${notes[student.id]}`
+                        }
+                        
+                        if (examScores[student.id]) {
+                          message += `، درجة الامتحان: ${examScores[student.id]}`
+                        }
+                        
+                        message += `، المستوى: ${levels[student.id]}`
+                        
+                        const phoneWithCountryCode = `${student.countryCode || '+966'}${student.whatsappNumber}`
                         const whatsappUrl = `https://api.whatsapp.com/send?phone=${phoneWithCountryCode}&text=${encodeURIComponent(message)}`
                         window.open(whatsappUrl, '_blank')
                       }}

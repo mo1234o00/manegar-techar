@@ -8,6 +8,7 @@ const createStudentSchema = z.object({
   name: z.string(),
   parentPhone: z.string(),
   whatsappNumber: z.string().optional().nullable(),
+  countryCode: z.string().default('+966'),
 })
 
 export async function POST(request: Request) {
@@ -27,8 +28,8 @@ export async function POST(request: Request) {
     const body = await request.json()
     console.log('Received body:', body)
     
-    const { groupId, name, parentPhone, whatsappNumber } = createStudentSchema.parse(body)
-    console.log('Parsed data:', { groupId, name, parentPhone, whatsappNumber })
+    const { groupId, name, parentPhone, whatsappNumber, countryCode } = createStudentSchema.parse(body)
+    console.log('Parsed data:', { groupId, name, parentPhone, whatsappNumber, countryCode })
 
     // Verify that the group belongs to the user
     const group = await prisma.group.findUnique({
@@ -36,7 +37,7 @@ export async function POST(request: Request) {
       include: { year: true }
     })
 
-    if (!group || group.year.userId !== user.id) {
+    if (!group || (group.year as any).userId !== user.id) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
     }
 
@@ -58,6 +59,7 @@ export async function POST(request: Request) {
         parentPhone,
         studentCode: newCode,
         whatsappNumber,
+        countryCode,
       },
     })
 
@@ -100,7 +102,7 @@ export async function GET(request: Request) {
       include: { year: true }
     })
 
-    if (!group || group.year.userId !== user.id) {
+    if (!group || (group.year as any).userId !== user.id) {
       return NextResponse.json({ error: 'غير مصرح' }, { status: 403 })
     }
 

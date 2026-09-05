@@ -8,6 +8,10 @@ const createAttendanceSchema = z.object({
   groupId: z.string(),
   date: z.string(),
   status: z.enum(['Present', 'Absent', 'Excused', 'Late']),
+  homework: z.boolean().default(false),
+  notes: z.string().optional(),
+  examScore: z.number().optional(),
+  level: z.string().default('مقبول'),
 })
 
 export async function POST(request: Request) {
@@ -25,7 +29,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { studentId, groupId, date, status } = createAttendanceSchema.parse(body)
+    const { studentId, groupId, date, status, homework, notes, examScore, level } = createAttendanceSchema.parse(body)
 
     // Verify that the group belongs to the user
     const group = await prisma.group.findUnique({
@@ -53,7 +57,13 @@ export async function POST(request: Request) {
     if (existing) {
       attendance = await prisma.attendance.update({
         where: { id: existing.id },
-        data: { status },
+        data: { 
+          status,
+          homework,
+          notes,
+          examScore,
+          level,
+        },
       })
     } else {
       attendance = await prisma.attendance.create({
@@ -62,6 +72,10 @@ export async function POST(request: Request) {
           groupId,
           date: attendanceDate,
           status,
+          homework,
+          notes,
+          examScore,
+          level,
         },
       })
     }

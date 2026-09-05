@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Form, FormControl, FormField, FormItem, FormMessage, FormProvider } from '@/components/ui/form'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Pencil, Trash2, User, Phone } from 'lucide-react'
 import { useRouter } from 'next/navigation'
@@ -21,6 +22,7 @@ interface Student {
   parentPhone: string
   studentCode: string
   whatsappNumber: string | null
+  countryCode: string | null
 }
 
 interface StudentsTabProps {
@@ -28,10 +30,20 @@ interface StudentsTabProps {
   monthlyPrice: number
 }
 
+const COUNTRIES = [
+  { name: 'السعودية', code: '+966' },
+  { name: 'مصر', code: '+20' },
+  { name: 'الأردن', code: '+962' },
+  { name: 'عمان', code: '+968' },
+  { name: 'الكويت', code: '+965' },
+  { name: 'ليبيا', code: '+218' },
+]
+
 const studentSchema = z.object({
   name: z.string().min(2, 'الاسم لازم يكون حرفين على الأقل'),
   parentPhone: z.string().min(5, 'رقم التليفون مطلوب'),
   whatsappNumber: z.string().optional(),
+  countryCode: z.string(),
 })
 
 type StudentFormValues = z.infer<typeof studentSchema>
@@ -53,6 +65,7 @@ export function StudentsTab({ groupId, monthlyPrice }: StudentsTabProps) {
       name: '',
       parentPhone: '',
       whatsappNumber: '',
+      countryCode: '+966',
     },
   })
 
@@ -93,6 +106,7 @@ export function StudentsTab({ groupId, monthlyPrice }: StudentsTabProps) {
         name: values.name,
         parentPhone: values.parentPhone,
         whatsappNumber: values.whatsappNumber || null,
+        countryCode: values.countryCode,
       }
       
       console.log('Sending data:', dataToSend)
@@ -213,6 +227,30 @@ export function StudentsTab({ groupId, monthlyPrice }: StudentsTabProps) {
               />
               <FormField
                 control={form.control}
+                name="countryCode"
+                render={({ field }) => (
+                  <FormItem className="space-y-2">
+                    <Label htmlFor="countryCode">رمز الدولة</Label>
+                    <FormControl>
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger className="bg-white/5 border-white/10 text-white">
+                          <SelectValue placeholder="اختر الدولة" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-black border-white/10 text-white">
+                          {COUNTRIES.map((country) => (
+                            <SelectItem key={country.code} value={country.code}>
+                              {country.name} ({country.code})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
                 name="whatsappNumber"
                 render={({ field }) => (
                   <FormItem className="space-y-2">
@@ -220,7 +258,7 @@ export function StudentsTab({ groupId, monthlyPrice }: StudentsTabProps) {
                     <FormControl>
                       <Input
                         id="whatsappNumber"
-                        placeholder="مثال: 201xxxxxxxxx"
+                        placeholder="مثال: 5012345678"
                         className="bg-white/5 border-white/10 text-white"
                         {...field}
                       />

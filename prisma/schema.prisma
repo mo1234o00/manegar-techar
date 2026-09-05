@@ -76,6 +76,7 @@ model Student {
   name         String
   parentPhone  String
   whatsappNumber String?
+  countryCode  String?      @default("+966") // Country code for WhatsApp
   studentCode  String       @unique // Auto-generated unique ID, e.g., 1001
   attendance   Attendance[]
   payments     Payment[]
@@ -95,6 +96,10 @@ model Attendance {
   group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
   date      DateTime
   status    String   // Present, Absent, Excused, Late
+  homework  Boolean  @default(false) // Homework done or not
+  notes     String?  // Teacher notes
+  examScore Float?   // Exam score (optional)
+  level     String   @default("مقبول") // Student level: مقبول, ضعيف, متوسط, جيد, جيد جداً, ممتاز
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
