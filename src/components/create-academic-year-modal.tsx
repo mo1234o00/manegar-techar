@@ -302,9 +302,6 @@ export function CreateAcademicYearModal({ onSuccess }: { onSuccess?: () => void 
               </div>
             )}
 
-            <p className="text-sm text-white/40">
-              النظام هيعمل اسم السنة تلقائياً (مثال: "2024-2025")
-            </p>
             <Button 
               type="submit" 
               disabled={loading || !canSubmit()} 
